@@ -11,7 +11,10 @@ import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.orm.JpaNativeQueryProvider;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
@@ -36,39 +39,55 @@ public class ChunkJob {
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
 
-
-    public Job job() {
-        return jobBuilderFactory.get("jobName").start(
-                stepBuilderFactory.get("jobName" + "Step")
-                        .<PamMapping, SpringBatchSampleTest>chunk(CHUNK_SIZE)
-                        .reader(r())
-                        .processor(p())
-                        .writer(w())
-                        .build())
-                .build();
-    }
-
-
-
-    public JpaPagingItemReader r() {
-        JpaNativeQueryProvider<PamMapping> queryProvider = new JpaNativeQueryProvider<>();// for native query usage
-        queryProvider.setEntityClass(PamMapping.class);
-        queryProvider.setSqlQuery(new StringBuilder()
+    String queryStr = new StringBuilder()
                 .append(" select *  ")
                 .append(" from pam_mapping")
                 .append(" where 1=1 ")
                 .append("     and active_yn ='Y' ")
                 .append("     and used_yn ='Y' ")
                 .append("     and model_seq is not null ")
-                .toString());
-        JpaPagingItemReader<PamMapping> reader = new JpaPagingItemReader<PamMapping>() {
+                .toString();
+    @Bean
+    public TaskExecutor taskExecutor(){
+        return new SimpleAsyncTaskExecutor("spring_batch");
+    }
+
+    public Job job() {
+        return jobBuilderFactory.get("jobName").start(
+                stepBuilderFactory.get("jobName" + "Step")
+                        .<PamMapping, SpringBatchSampleTest>chunk(CHUNK_SIZE)
+                        .reader(reader("readerName", queryStr, PamMapping.class))
+                        .processor(p())
+                        .writer(w())
+                        .taskExecutor(taskExecutor())
+                        .throttleLimit(5)
+                        .build())
+                .build();
+    }
+
+
+
+    /**
+     * 공통으로 사용 하는 JpaPagingItemReaderBuilder build 하는 함수
+     *
+     * @param readerName
+     * @param queryStr native query String
+     * @param clazz return Class
+     * @param <T> return type
+     * @return
+     */
+    public <T> JpaPagingItemReader reader(final String readerName, final String queryStr, Class clazz) {
+        JpaNativeQueryProvider<T> queryProvider = new JpaNativeQueryProvider<T>();// for native query usage
+        queryProvider.setEntityClass(clazz);
+        queryProvider.setSqlQuery(queryStr);
+        JpaPagingItemReader<T> reader = new JpaPagingItemReader<T>() {
             // 완료 된 이후 에  page 를  이동하게 되면 1페이지를 건너 뛰기 때문에 재정의 함
             @Override
             public int getPage() {
                 return 0;
             }
         };
-        reader.setName("readerName");
+        reader.setName(readerName);
         reader.setEntityManagerFactory(entityManagerFactory);
         reader.setPageSize(PAGE_SIZE);
         reader.setQueryProvider(queryProvider);

@@ -12,7 +12,6 @@ import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
 /**
- *
  * @author SungTae, Kang
  */
 @Slf4j
@@ -31,12 +30,7 @@ public class TaskletJob {
                         .tasklet(
                                 (contribution, chunkContext) -> {
                                     // do something
-
-
-
-
-
-                                    log.info("taskLet 입니다{}","~~~");
+                                    log.info("taskLet 입니다{}", "~~~");
                                     return RepeatStatus.FINISHED;
                                 }
                         )
