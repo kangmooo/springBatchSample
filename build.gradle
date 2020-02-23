@@ -1,0 +1,88 @@
+// 외부 라이브러리를 사용하기 위해 정의
+buildscript {
+    // 변수 저장
+    ext {
+        springBootVersion = '2.2.0.RELEASE'
+        querydslPluginVersion = '1.0.10'
+    }
+    // 외부 저장소 정의
+    repositories {
+        mavenCentral()                                  // maven 저장소
+        maven { url "https://plugins.gradle.org/m2/" }  // plugin 저장소
+    }
+    // spring boot, querydsl을 사용하기 위한 의존관계 정의
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("gradle.plugin.com.ewerk.gradle.plugins:querydsl-plugin:${querydslPluginVersion}")
+    }
+}
+
+
+// plugin 사용 정의
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: "com.ewerk.gradle.plugins.querydsl"
+
+group = 'com.dhi.prevision'
+version = '1.0.0'
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+jar {
+    enabled = true
+}
+bootJar{
+    mainClassName = 'com.dhi.prevision.SpringBatchSampleApplication'
+}
+
+// 저장소 정의
+repositories {
+    mavenLocal()
+    maven { url "https://plugins.gradle.org/m2/" }  // plugin 저장소
+}
+
+// 구체적 lib 사용 하도록 정의
+dependencies {
+    annotationProcessor ('org.projectlombok:lombok')
+    compile('org.projectlombok:lombok')
+    compile('org.springframework.boot:spring-boot-starter-batch')
+    compile('org.springframework.boot:spring-boot-starter-data-jpa')
+//    compile('org.springframework.boot:spring-boot-starter-test')
+    compile("com.querydsl:querydsl-jpa")
+    compile("com.querydsl:querydsl-apt")
+    compile('org.postgresql:postgresql')
+
+    compile('ch.qos.logback:logback-classic:1.2.3')
+    compile('ch.qos.logback.contrib:logback-json-classic:0.1.5')
+    compile('ch.qos.logback.contrib:logback-jackson:0.1.5')
+//    compile ('org.apache.commons:commons-lang3:3.5')
+//    compile('org.apache.tomcat:tomcat-jdbc:9.0.16')
+//    compile('com.googlecode.json-simple:json-simple:1.1')
+//    compile('com.fasterxml.jackson.core:jackson-databind:2.9.9')
+
+//    testCompile 'org.junit.jupiter:junit-jupiter-api'
+//    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+}
+
+// querydsl 적용
+querydsl {
+    library = "com.querydsl:querydsl-apt"
+    jpa = true
+    querydslSourcesDir = 'src/main/generated'
+}
+sourceSets {
+    main {java {srcDirs = ['src/main/java', 'src/main/generated']}}
+    resources {java {srcDir 'src/main/resources'}}
+}
+
+compileQuerydsl{
+    options.annotationProcessorPath = configurations.querydsl
+}
+configurations {
+    querydsl.extendsFrom compileClasspath
+}
+
+//test {
+//    useJUnitPlatform()
+//}
